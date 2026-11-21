@@ -1,0 +1,18 @@
+{
+  "id": "com.github.dasilva333.storeplus",
+  "version": "1.0.0",
+  "vendor": "dasilva333",
+  "type": "web",
+  "main": "index.html",
+  "title": "Homebrew Store+",
+  "appDescription": "Modern split-pane Homebrew Channel browser with descriptions, GitHub popularity, recent updates, and 1-click install",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "iconColor": "#9333ea",
+  "transparent": false,
+  "noSplashOnLaunch": true,
+  "spinnerOnLaunch": false,
+  "handlesRelaunch": true,
+  "disableBackHistoryAPI": true,
+  "requiredACG": []
+}

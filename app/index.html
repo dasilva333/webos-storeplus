@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Homebrew Store+</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1920px;
+    height: 1080px;
+    background: #070b14;
+    color: #f1f5f9;
+    font-family: "LG Smart UI", "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+  }
+  .shell {
+    width: 1920px;
+    height: 1080px;
+    padding: 30px 50px 24px 50px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top Header & Filter Bar */
+  .topbar {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #1e293b;
+    flex-shrink: 0;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+  }
+  .brand h1 {
+    font-size: 42px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #c084fc, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-right: 18px;
+  }
+  .brand .count {
+    font-size: 24px;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .controls {
+    display: flex;
+    align-items: center;
+  }
+  .pill {
+    display: inline-block;
+    padding: 10px 22px;
+    border-radius: 999px;
+    font-size: 22px;
+    font-weight: 600;
+    background: #111a2c;
+    color: #94a3b8;
+    border: 3px solid transparent;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: transform 0.1s ease, border-color 0.1s ease;
+  }
+  .pill.active {
+    background: #4a044e;
+    color: #f5d0fe;
+    border-color: #a855f7;
+  }
+  .pill.sort-pill {
+    background: #082f49;
+    color: #7dd3fc;
+    border-color: #0284c7;
+    margin-left: 20px;
+  }
+  .pill.focused, .pill:hover {
+    border-color: #38bdf8;
+    color: #ffffff;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.35);
+  }
+
+  /* Split Main Content */
+  .main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  /* Left Pane: App List (Roomy Cards, Standard Block Scroller) */
+  .list-pane {
+    width: 880px;
+    height: 920px;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    padding-right: 14px;
+    flex-shrink: 0;
+  }
+  .list-pane::-webkit-scrollbar {
+    width: 8px;
+  }
+  .list-pane::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+  }
+
+  /* Generous 144px Card Height */
+  .app-row {
+    display: flex;
+    align-items: center;
+    min-height: 144px;
+    height: 144px;
+    margin-bottom: 16px;
+    padding: 18px 24px;
+    background: #0f172a;
+    border: 4px solid #1e293b;
+    border-radius: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+  }
+  .app-row.selected {
+    background: #172554;
+    border-color: #3b82f6;
+  }
+  .app-row.focused, .app-row:hover {
+    background: #1e1b4b;
+    border-color: #c084fc;
+    transform: translateX(6px) scale(1.01);
+    box-shadow: 0 8px 32px rgba(192, 132, 252, 0.35);
+  }
+
+  .app-icon {
+    width: 96px;
+    height: 96px;
+    border-radius: 18px;
+    object-fit: contain;
+    background: #020617;
+    margin-right: 22px;
+    padding: 8px;
+    flex-shrink: 0;
+    border: 1px solid #1e293b;
+  }
+  .app-info {
+    flex: 1;
+    min-width: 0;
+    margin-right: 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .app-title-line {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .app-title {
+    font-size: 30px;
+    font-weight: 800;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .badge {
+    font-size: 16px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 8px;
+    margin-left: 12px;
+    flex-shrink: 0;
+  }
+  .badge.installed { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+  .badge.update { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
+  .badge.featured { background: #581c87; color: #e9d5ff; border: 1px solid #9333ea; }
+  .badge.root { background: #7f1d1d; color: #fecaca; border: 1px solid #dc2626; }
+
+  .app-short {
+    font-size: 21px;
+    color: #94a3b8;
+    line-height: 28px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 56px;
+  }
+  .app-stats {
+    width: 140px;
+    text-align: right;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .stars {
+    font-size: 26px;
+    font-weight: 800;
+    color: #fbbf24;
+    margin-bottom: 6px;
+  }
+  .date {
+    font-size: 17px;
+    color: #64748b;
+    font-weight: 600;
+  }
+
+  /* Right Pane: Live Detail Preview */
+  .detail-pane {
+    flex: 1;
+    height: 920px;
+    margin-left: 32px;
+    background: #0f172a;
+    border: 3px solid #1e293b;
+    border-radius: 24px;
+    padding: 36px 40px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .detail-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-shrink: 0;
+  }
+  .detail-icon {
+    width: 120px;
+    height: 120px;
+    border-radius: 24px;
+    object-fit: contain;
+    background: #020617;
+    padding: 10px;
+    border: 2px solid #1e293b;
+    margin-right: 26px;
+    flex-shrink: 0;
+  }
+  .detail-title-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+  .detail-title {
+    font-size: 44px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-bottom: 8px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .detail-id {
+    font-size: 20px;
+    color: #64748b;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .meta-chips {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .chip {
+    display: inline-block;
+    font-size: 19px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 10px;
+    background: #1e293b;
+    color: #cbd5e1;
+    margin-right: 10px;
+    margin-bottom: 8px;
+  }
+  .chip.star-chip { color: #fbbf24; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); }
+  .chip.root-chip { color: #fca5a5; background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.35); }
+  .chip.ok-chip { color: #6ee7b7; background: rgba(16, 185, 129, 0.18); border: 1px solid rgba(16, 185, 129, 0.35); }
+
+  .detail-desc {
+    font-size: 24px;
+    line-height: 1.6;
+    color: #e2e8f0;
+    background: #020617;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    max-height: 230px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .shots {
+    display: flex;
+    margin-bottom: 24px;
+    height: 185px;
+    flex-shrink: 0;
+  }
+  .shots img {
+    height: 100%;
+    width: 48%;
+    object-fit: cover;
+    border-radius: 14px;
+    border: 1px solid #334155;
+    background: #020617;
+    margin-right: 16px;
+  }
+  .no-shots {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #020617;
+    border: 1px dashed #1e293b;
+    border-radius: 14px;
+    font-size: 22px;
+    color: #475569;
+  }
+
+  .detail-actions {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .act-btn {
+    padding: 18px 40px;
+    border-radius: 14px;
+    font-size: 28px;
+    font-weight: 700;
+    border: 4px solid transparent;
+    background: #1e293b;
+    color: #f8fafc;
+    cursor: pointer;
+    margin-right: 18px;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+  }
+  .act-btn.install { background: #7e22ce; color: #ffffff; }
+  .act-btn.launch { background: #0d9488; color: #ffffff; }
+  .act-btn.remove { background: #dc2626; color: #ffffff; }
+  .act-btn.focused, .act-btn:hover {
+    border-color: #38bdf8;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.4);
+  }
+  .action-status {
+    margin-left: auto;
+    font-size: 24px;
+    color: #38bdf8;
+    font-weight: 700;
+  }
+
+  .footer {
+    height: 36px;
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid #1e293b;
+    font-size: 20px;
+    color: #64748b;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="brand">
+      <h1>Homebrew Store+</h1>
+      <span class="count" id="catalogCount">Loading catalog...</span>
+    </div>
+    <div class="controls" id="filterBar"></div>
+  </div>
+
+  <div class="main">
+    <div class="list-pane" id="appList"></div>
+    <div class="detail-pane" id="detailPane">
+      <div style="font-size:28px;color:#64748b;margin:auto;">Loading apps from repo.webosbrew.org...</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Up/Down: Browse Apps &nbsp;|&nbsp; Right / OK: Jump to Actions &nbsp;|&nbsp; Left: Back to List &nbsp;|&nbsp; Back: Exit</span>
+    <span>Live Catalog: repo.webosbrew.org</span>
+  </div>
+</div>
+
+<script src="github_meta.js"></script>
+<script>
+(function() {
+  var FILTERS = [
+    { key: "all", label: "All" },
+    { key: "featured", label: "Featured" },
+    { key: "installed", label: "Installed" },
+    { key: "media", label: "Media" },
+    { key: "games", label: "Games" },
+    { key: "system", label: "Root & Tools" }
+  ];
+  var SORTS = [
+    { key: "popular", label: "Sort: Popular ★" },
+    { key: "recent", label: "Sort: Recent" },
+    { key: "alpha", label: "Sort: A–Z" }
+  ];
+
+  var allPackages = [];
+  var filteredPackages = [];
+  var installedMap = {};
+
+  var activeFilter = "all";
+  var sortIdx = 0;
+
+  var focusZone = "list";
+  var topIdx = 0;
+  var listIdx = 0;
+  var actionIdx = 0;
+  var busy = false;
+  var detailActions = [];
+
+  var filterBarEl = document.getElementById("filterBar");
+  var appListEl = document.getElementById("appList");
+  var detailPaneEl = document.getElementById("detailPane");
+  var catalogCountEl = document.getElementById("catalogCount");
+
+  function execRoot(command, cb) {
+    try {
+      var bridge = new PalmServiceBridge();
+      bridge.onservicecallback = function(raw) {
+        try {
+          var res = JSON.parse(raw);
+          cb(null, res.stdoutString || "");
+        } catch (e) { cb(e, ""); }
+      };
+      bridge.call(
+        "luna://org.webosbrew.hbchannel.service/exec",
+        JSON.stringify({ command: command })
+      );
+    } catch (err) { cb(err, ""); }
+  }
+
+  var STORE_HELPER = 'DIR="/media/developer/apps/usr/palm/applications/com.github.dasilva333.storeplus/bin/webos-store.sh"; if [ -f "$DIR" ]; then sh "$DIR"; else /var/lib/webosbrew/bin/webos-store.sh; fi';
+
+  function execStore(subcmd, cb) {
+    execRoot(STORE_HELPER + " " + subcmd, cb);
+  }
+
+  function closeSelf() {
+    try {
+      execRoot("pkill -9 -f storeplus 2>/dev/null; luna-send -a org.webosbrew.hbchannel -f -n 1 luna://com.webos.applicationManager/closeByAppId '{\"id\":\"com.github.dasilva333.storeplus\"}'", function() {});
+    } catch (e) {}
+    try { window.close(); } catch (e) {}
+  }
+
+  function esc(s) {
+    return String(s || "").replace(/[&<>"']/g, function(c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+    });
+  }
+
+  function fmtStars(n) {
+    if (!n || n <= 0) return "";
+    if (n >= 1000) return "★ " + (n / 1000).toFixed(1) + "k";
+    return "★ " + n;
+  }
+
+  function fmtSize(bytes) {
+    if (!bytes) return "";
+    var mb = bytes / (1024 * 1024);
+    if (mb < 1) return Math.round(bytes / 1024) + " KB";
+    return mb.toFixed(1) + " MB";
+  }
+
+  function classifyApp(p) {
+    var hay = ((p.title || "") + " " + (p.shortDescription || "") + " " + (p.id || "")).toLowerCase();
+    if (/kodi|jellyfin|plex|youtube|twitch|iptv|video|media|music|spotify|radio|stream|tv|movie|anime|fin\b|stremio|vlc|mpv|dlna/.test(hay)) {
+      return "media";
+    }
+    if (/game|2048|retro|emu|moonlight|limelight|doom|quake|tetris|chess|mario|sonic|arcade|steam|play|nes|snes|gba|psx|n64|scumm/.test(hay)) {
+      return "games";
+    }
+    return "system";
+  }
+
+  function renderTopBar() {
+    filterBarEl.innerHTML = "";
+    for (var i = 0; i < FILTERS.length; i++) {
+      (function(idx, f) {
+        var el = document.createElement("div");
+        el.className = "pill" + (activeFilter === f.key ? " active" : "");
+        if (focusZone === "topbar" && topIdx === idx) el.classList.add("focused");
+        el.textContent = f.label;
+        el.addEventListener("click", function() {
+          activeFilter = f.key;
+          listIdx = 0;
+          applyFilterAndSort();
+        });
+        filterBarEl.appendChild(el);
+      })(i, FILTERS[i]);
+    }
+    var sEl = document.createElement("div");
+    sEl.className = "pill sort-pill";
+    if (focusZone === "topbar" && topIdx === FILTERS.length) sEl.classList.add("focused");
+    sEl.textContent = SORTS[sortIdx].label;
+    sEl.addEventListener("click", function() {
+      sortIdx = (sortIdx + 1) % SORTS.length;
+      listIdx = 0;
+      applyFilterAndSort();
+    });
+    filterBarEl.appendChild(sEl);
+  }
+
+  function applyFilterAndSort() {
+    var list = allPackages.filter(function(p) {
+      if (activeFilter === "all") return true;
+      if (activeFilter === "featured") return !!p.featured;
+      if (activeFilter === "installed") return !!installedMap[p.id];
+      return p._cat === activeFilter;
+    });
+
+    var sKey = SORTS[sortIdx].key;
+    list.sort(function(a, b) {
+      if (sKey === "popular") {
+        if (b._stars !== a._stars) return b._stars - a._stars;
+        return (a.title || "").localeCompare(b.title || "");
+      }
+      if (sKey === "recent") {
+        if (b._updated !== a._updated) return (b._updated || "").localeCompare(a._updated || "");
+        return b._stars - a._stars;
+      }
+      return (a.title || "").localeCompare(b.title || "");
+    });
+
+    filteredPackages = list;
+    if (listIdx >= filteredPackages.length) listIdx = Math.max(0, filteredPackages.length - 1);
+    catalogCountEl.textContent = filteredPackages.length + " of " + allPackages.length + " apps";
+
+    renderTopBar();
+    renderList();
+    renderDetail();
+  }
+
+  function renderList() {
+    appListEl.innerHTML = "";
+    if (filteredPackages.length === 0) {
+      appListEl.innerHTML = '<div style="padding:48px;text-align:center;font-size:26px;color:#64748b;">No apps match this filter.</div>';
+      return;
+    }
+
+    for (var i = 0; i < filteredPackages.length; i++) {
+      (function(idx, p) {
+        var row = document.createElement("div");
+        var isSel = (idx === listIdx);
+        row.className = "app-row" + (isSel ? " selected" : "");
+        if (focusZone === "list" && isSel) row.classList.add("focused");
+
+        var instVer = installedMap[p.id];
+        var m = p.manifest || {};
+        var badgeHtml = "";
+        if (instVer) {
+          if (m.version && instVer !== m.version) {
+            badgeHtml = '<span class="badge update">Update</span>';
+          } else {
+            badgeHtml = '<span class="badge installed">Installed</span>';
+          }
+        } else if (p.featured) {
+          badgeHtml = '<span class="badge featured">Featured</span>';
+        }
+
+        var shortTxt = p.shortDescription || m.appDescription || "No description provided.";
+        row.innerHTML =
+          '<img class="app-icon" src="' + esc(p.iconUri || m.iconUri || "") + '" onerror="this.style.visibility=\'hidden\'" />' +
+          '<div class="app-info">' +
+            '<div class="app-title-line">' +
+              '<span class="app-title">' + esc(p.title || p.id) + '</span>' +
+              badgeHtml +
+            '</div>' +
+            '<div class="app-short">' + esc(shortTxt) + '</div>' +
+          '</div>' +
+          '<div class="app-stats">' +
+            '<div class="stars">' + esc(fmtStars(p._stars)) + '</div>' +
+            '<div class="date">' + esc(p._updated || "") + '</div>' +
+          '</div>';
+
+        row.addEventListener("click", function() {
+          listIdx = idx;
+          focusZone = "actions";
+          actionIdx = 0;
+          updateFocus();
+        });
+        appListEl.appendChild(row);
+      })(i, filteredPackages[i]);
+    }
+
+    scrollSelectedIntoView();
+  }
+
+  function scrollSelectedIntoView() {
+    var rows = appListEl.querySelectorAll(".app-row");
+    if (rows[listIdx]) {
+      rows[listIdx].scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+
+  function renderDetail(statusMsg) {
+    var p = filteredPackages[listIdx];
+    if (!p) {
+      detailPaneEl.innerHTML = '<div style="font-size:28px;color:#64748b;margin:auto;">Select an app to preview details.</div>';
+      detailActions = [];
+      return;
+    }
+    var m = p.manifest || {};
+    var instVer = installedMap[p.id];
+    var needsUpdate = !!(instVer && m.version && instVer !== m.version);
+    var desc = p.shortDescription || m.appDescription || "No description available for this package.";
+
+    var chips = [];
+    if (m.version) chips.push('<span class="chip">v' + esc(m.version) + '</span>');
+    if (m.ipkSize) chips.push('<span class="chip">' + esc(fmtSize(m.ipkSize)) + '</span>');
+    if (p._stars > 0) chips.push('<span class="chip star-chip">' + esc(fmtStars(p._stars)) + ' GitHub</span>');
+    if (p._updated) chips.push('<span class="chip">Updated ' + esc(p._updated) + '</span>');
+    if (m.rootRequired) chips.push('<span class="chip root-chip">Root Required</span>');
+    if (instVer) chips.push('<span class="chip ok-chip">Installed (v' + esc(instVer) + ')</span>');
+
+    var shotsHtml = "";
+    var shots = p.screenshots || [];
+    if (shots.length > 0) {
+      for (var s = 0; s < Math.min(2, shots.length); s++) {
+        var url = typeof shots[s] === "string" ? shots[s] : (shots[s].uri || shots[s].url || "");
+        if (url) shotsHtml += '<img src="' + esc(url) + '" onerror="this.style.display=\'none\'" />';
+      }
+    }
+    if (!shotsHtml) {
+      shotsHtml = '<div class="no-shots">No screenshots in repository metadata</div>';
+    }
+
+    detailActions = [];
+    if (!instVer) {
+      detailActions.push({ label: "Install App", cls: "install", fn: function() { doInstall(p); } });
+    } else {
+      if (needsUpdate) {
+        detailActions.push({ label: "Update to v" + m.version, cls: "install", fn: function() { doInstall(p); } });
+      }
+      detailActions.push({ label: "Launch", cls: "launch", fn: function() { doLaunch(p); } });
+      if (p.id !== "org.webosbrew.hbchannel" && p.id !== "org.webosbrew.storeplus") {
+        detailActions.push({ label: "Uninstall", cls: "remove", fn: function() { doRemove(p); } });
+      }
+    }
+    if (actionIdx >= detailActions.length) actionIdx = 0;
+
+    var btnsHtml = "";
+    for (var b = 0; b < detailActions.length; b++) {
+      var focusedCls = (focusZone === "actions" && actionIdx === b) ? " focused" : "";
+      btnsHtml += '<button class="act-btn ' + detailActions[b].cls + focusedCls + '" data-bidx="' + b + '">' + esc(detailActions[b].label) + '</button>';
+    }
+
+    detailPaneEl.innerHTML =
+      '<div class="detail-header">' +
+        '<img class="detail-icon" src="' + esc(p.detailIconUri || p.iconUri || m.iconUri || "") + '" onerror="this.style.visibility=\'hidden\'" />' +
+        '<div class="detail-title-wrap">' +
+          '<div class="detail-title">' + esc(p.title || p.id) + '</div>' +
+          '<div class="detail-id">' + esc(p.id) + '</div>' +
+          '<div class="meta-chips">' + chips.join("") + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="detail-desc">' + esc(desc) + '</div>' +
+      '<div class="shots">' + shotsHtml + '</div>' +
+      '<div class="detail-actions">' +
+        btnsHtml +
+        '<div class="action-status" id="actionStatus">' + esc(statusMsg || "") + '</div>' +
+      '</div>';
+
+    var btnNodes = detailPaneEl.querySelectorAll(".act-btn");
+    for (var n = 0; n < btnNodes.length; n++) {
+      (function(idx) {
+        btnNodes[idx].addEventListener("click", function() {
+          if (detailActions[idx]) detailActions[idx].fn();
+        });
+      })(n);
+    }
+  }
+
+  function updateFocus() {
+    renderTopBar();
+    var rows = appListEl.querySelectorAll(".app-row");
+    for (var i = 0; i < rows.length; i++) {
+      rows[i].classList.toggle("selected", i === listIdx);
+      rows[i].classList.toggle("focused", focusZone === "list" && i === listIdx);
+    }
+    scrollSelectedIntoView();
+    renderDetail();
+  }
+
+  function setActionStatus(msg) {
+    var el = document.getElementById("actionStatus");
+    if (el) el.textContent = msg;
+  }
+
+  function doInstall(p) {
+    if (busy) return;
+    var m = p.manifest || {};
+    if (!m.ipkUrl) { setActionStatus("No IPK URL found"); return; }
+    busy = true;
+    setActionStatus("Downloading & installing " + p.title + "...");
+    var safeTitle = (p.title || p.id).replace(/[^a-zA-Z0-9 ._-]/g, "");
+    execStore("install '" + p.id + "' '" + m.ipkUrl + "' '" + safeTitle + "'", function(err, out) {
+      busy = false;
+      refreshInstalled(function() {
+        renderList();
+        renderDetail("Installed " + p.title + "!");
+      });
+    });
+  }
+
+  function doRemove(p) {
+    if (busy) return;
+    busy = true;
+    setActionStatus("Uninstalling " + p.title + "...");
+    var safeTitle = (p.title || p.id).replace(/[^a-zA-Z0-9 ._-]/g, "");
+    execStore("remove '" + p.id + "' '" + safeTitle + "'", function() {
+      busy = false;
+      refreshInstalled(function() {
+        renderList();
+        renderDetail("Uninstalled " + p.title);
+      });
+    });
+  }
+
+  function doLaunch(p) {
+    if (busy) return;
+    setActionStatus("Launching " + p.title + "...");
+    execStore("launch '" + p.id + "'", function() {});
+  }
+
+  function refreshInstalled(cb) {
+    execStore("installed", function(err, out) {
+      installedMap = {};
+      if (!err && out) {
+        try {
+          var parsed = JSON.parse(out);
+          var list = parsed.apps || [];
+          for (var i = 0; i < list.length; i++) {
+            installedMap[list[i].id] = list[i].version || "1.0.0";
+          }
+        } catch (e) {}
+      }
+      if (cb) cb();
+    });
+  }
+
+  function loadCatalog() {
+    refreshInstalled(function() {
+      execStore("catalog", function(err, out) {
+        if (err || !out) {
+          catalogCountEl.textContent = "Failed to load catalog";
+          return;
+        }
+        try {
+          var data = JSON.parse(out);
+          var pkgs = data.packages || [];
+          var meta = window.GITHUB_META || {};
+          for (var i = 0; i < pkgs.length; i++) {
+            var p = pkgs[i];
+            var gm = meta[p.id] || {};
+            p._stars = gm.stars || 0;
+            p._updated = gm.updated || "";
+            p._cat = classifyApp(p);
+          }
+          allPackages = pkgs;
+          applyFilterAndSort();
+        } catch (e) {
+          catalogCountEl.textContent = "Catalog parse error";
+        }
+      });
+    });
+  }
+
+  document.addEventListener("keydown", function(e) {
+    var code = e.keyCode;
+    // Back (461 webOS, 27 Esc, 8 Backspace)
+    if (code === 461 || code === 27 || code === 8) {
+      e.preventDefault();
+      if (focusZone === "actions") {
+        focusZone = "list";
+        updateFocus();
+      } else {
+        closeSelf();
+      }
+      return;
+    }
+
+    if (focusZone === "topbar") {
+      if (code === 37) { // Left
+        e.preventDefault();
+        topIdx = (topIdx + FILTERS.length) % (FILTERS.length + 1);
+        renderTopBar();
+      } else if (code === 39) { // Right
+        e.preventDefault();
+        topIdx = (topIdx + 1) % (FILTERS.length + 1);
+        renderTopBar();
+      } else if (code === 40) { // Down -> list
+        e.preventDefault();
+        if (filteredPackages.length > 0) {
+          focusZone = "list";
+          updateFocus();
+        }
+      } else if (code === 13) { // OK
+        e.preventDefault();
+        if (topIdx < FILTERS.length) {
+          activeFilter = FILTERS[topIdx].key;
+          listIdx = 0;
+          applyFilterAndSort();
+        } else {
+          sortIdx = (sortIdx + 1) % SORTS.length;
+          listIdx = 0;
+          applyFilterAndSort();
+        }
+      }
+      return;
+    }
+
+    if (focusZone === "list") {
+      if (code === 38) { // Up
+        e.preventDefault();
+        if (listIdx > 0) {
+          listIdx--;
+          updateFocus();
+        } else {
+          focusZone = "topbar";
+          updateFocus();
+        }
+      } else if (code === 40) { // Down
+        e.preventDefault();
+        if (listIdx < filteredPackages.length - 1) {
+          listIdx++;
+          updateFocus();
+        }
+      } else if (code === 39 || code === 13) { // Right or OK -> detail actions
+        e.preventDefault();
+        if (detailActions.length > 0) {
+          focusZone = "actions";
+          actionIdx = 0;
+          updateFocus();
+        }
+      }
+      return;
+    }
+
+    if (focusZone === "actions") {
+      if (code === 37) { // Left
+        e.preventDefault();
+        if (actionIdx > 0) {
+          actionIdx--;
+          renderDetail();
+        } else {
+          focusZone = "list";
+          updateFocus();
+        }
+      } else if (code === 39) { // Right
+        e.preventDefault();
+        if (actionIdx < detailActions.length - 1) {
+          actionIdx++;
+          renderDetail();
+        }
+      } else if (code === 38) { // Up -> topbar
+        e.preventDefault();
+        focusZone = "topbar";
+        updateFocus();
+      } else if (code === 13) { // OK -> run action
+        e.preventDefault();
+        if (detailActions[actionIdx]) detailActions[actionIdx].fn();
+      }
+    }
+  });
+
+  document.addEventListener("webOSRelaunch", function() {
+    refreshInstalled(function() {
+      renderList();
+      renderDetail();
+    });
+  });
+
+  window.addEventListener("load", function() {
+    renderTopBar();
+    loadCatalog();
+  });
+})();
+</script>
+</body>
+</html>
