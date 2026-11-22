@@ -2,13 +2,13 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Homebrew Store+</title>
+<title>App Explorer for webOS</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: 1920px;
     height: 1080px;
-    background: #070b14;
+    background: radial-gradient(circle at 18% 12%, #1e113a 0%, #0a0e1c 55%, #05070d 100%);
     color: #f1f5f9;
     font-family: "LG Smart UI", "Helvetica Neue", Arial, sans-serif;
     overflow: hidden;
@@ -372,7 +372,7 @@
 <div class="shell">
   <div class="topbar">
     <div class="brand">
-      <h1>Homebrew Store+</h1>
+      <h1>App Explorer</h1>
       <span class="count" id="catalogCount">Loading catalog...</span>
     </div>
     <div class="controls" id="filterBar"></div>
@@ -428,6 +428,21 @@
   var catalogCountEl = document.getElementById("catalogCount");
 
   function execRoot(command, cb) {
+    if (typeof PalmServiceBridge === "undefined") {
+      if (command.indexOf("catalog") !== -1) {
+        fetch("https://repo.webosbrew.org/api/apps.json")
+          .then(function(res) { return res.text(); })
+          .then(function(text) { cb(null, text); })
+          .catch(function(err) { cb(err, ""); });
+      } else if (command.indexOf("list") !== -1) {
+        setTimeout(function() {
+          cb(null, JSON.stringify({ installed: ["org.xbmc.kodi", "org.webosbrew.hbchannel"] }));
+        }, 50);
+      } else {
+        setTimeout(function() { cb(null, '{"ok":true}'); }, 50);
+      }
+      return;
+    }
     try {
       var bridge = new PalmServiceBridge();
       bridge.onservicecallback = function(raw) {
