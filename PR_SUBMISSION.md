@@ -28,6 +28,9 @@ App Explorer for webOS is an independent third-party catalog browser and directo
 * **Independent Package**: Runs as a standalone opt-in application (`com.github.dasilva333.storeplus`), providing alternative browsing without replacing or modifying core channel packages.
 * **Full TV Remote Navigation**: Native 2D D-pad spatial navigation with high-visibility focus rings and Magic Remote air-mouse support.
 
+### Screenshot
+![App Explorer Screenshot](https://raw.githubusercontent.com/dasilva333/webos-storeplus/main/assets/screenshot1.png)
+
 ### Compatibility & Verification
 * **Tested Device**: LG CX OLED (webOS 5.3.1 / Chromium 68)
 * **Framework**: Vanilla HTML5/JS (ES5 compatible across webOS 1.x through webOS 11+)
