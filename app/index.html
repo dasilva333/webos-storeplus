@@ -974,6 +974,9 @@
   });
 
   document.addEventListener("webOSRelaunch", function() {
+    if (window.PalmSystem && window.PalmSystem.activate) {
+      window.PalmSystem.activate();
+    }
     refreshInstalled(function() {
       renderList();
       renderDetail();

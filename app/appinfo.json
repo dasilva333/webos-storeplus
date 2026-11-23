@@ -12,7 +12,7 @@
   "transparent": false,
   "noSplashOnLaunch": true,
   "spinnerOnLaunch": false,
-  "handlesRelaunch": true,
+  "handlesRelaunch": false,
   "disableBackHistoryAPI": true,
   "requiredACG": []
 }
