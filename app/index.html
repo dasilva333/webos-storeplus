@@ -177,6 +177,7 @@
   .badge.installed { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
   .badge.update { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
   .badge.featured { background: #581c87; color: #e9d5ff; border: 1px solid #9333ea; }
+  .badge.community { background: #312e81; color: #e0e7ff; border: 1px solid #6366f1; }
   .badge.root { background: #7f1d1d; color: #fecaca; border: 1px solid #dc2626; }
 
   .app-short {
@@ -279,6 +280,7 @@
   .chip.star-chip { color: #fbbf24; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); }
   .chip.root-chip { color: #fca5a5; background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.35); }
   .chip.ok-chip { color: #6ee7b7; background: rgba(16, 185, 129, 0.18); border: 1px solid rgba(16, 185, 129, 0.35); }
+  .chip.community-chip { color: #c7d2fe; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); }
 
   .detail-desc {
     font-size: 24px;
@@ -387,7 +389,7 @@
 
   <div class="footer">
     <span>Up/Down: Browse Apps &nbsp;|&nbsp; Right / OK: Jump to Actions &nbsp;|&nbsp; Left: Back to List &nbsp;|&nbsp; Back: Exit</span>
-    <span>Live Catalog: repo.webosbrew.org</span>
+    <span>Live Catalog: repo.webosbrew.org + Community+ Catalog</span>
   </div>
 </div>
 
@@ -396,6 +398,7 @@
 (function() {
   var FILTERS = [
     { key: "all", label: "All" },
+    { key: "community", label: "Community+" },
     { key: "featured", label: "Featured" },
     { key: "installed", label: "Installed" },
     { key: "media", label: "Media" },
@@ -532,20 +535,38 @@
   function applyFilterAndSort() {
     var list = allPackages.filter(function(p) {
       if (activeFilter === "all") return true;
+      if (activeFilter === "community") return p.pool === "community-plus";
       if (activeFilter === "featured") return !!p.featured;
       if (activeFilter === "installed") return !!installedMap[p.id];
       return p._cat === activeFilter;
     });
 
+    function getStars(p) {
+      var s = p && p._stars;
+      if (typeof s === "number" && !isNaN(s) && s > 0) return s;
+      return 0;
+    }
+
     var sKey = SORTS[sortIdx].key;
     list.sort(function(a, b) {
       if (sKey === "popular") {
-        if (b._stars !== a._stars) return b._stars - a._stars;
+        var sA = getStars(a);
+        var sB = getStars(b);
+        if (sA > 0 && sB === 0) return -1;
+        if (sB > 0 && sA === 0) return 1;
+        if (sB !== sA) return sB - sA;
         return (a.title || "").localeCompare(b.title || "");
       }
       if (sKey === "recent") {
-        if (b._updated !== a._updated) return (b._updated || "").localeCompare(a._updated || "");
-        return b._stars - a._stars;
+        var uA = a._updated || "";
+        var uB = b._updated || "";
+        if (uA && !uB) return -1;
+        if (uB && !uA) return 1;
+        if (uB !== uA) return uB.localeCompare(uA);
+        var rA = getStars(a);
+        var rB = getStars(b);
+        if (rB !== rA) return rB - rA;
+        return (a.title || "").localeCompare(b.title || "");
       }
       return (a.title || "").localeCompare(b.title || "");
     });
@@ -584,6 +605,8 @@
           }
         } else if (p.featured) {
           badgeHtml = '<span class="badge featured">Featured</span>';
+        } else if (p.pool === "community-plus") {
+          badgeHtml = '<span class="badge community">Community+</span>';
         }
 
         var shortTxt = p.shortDescription || m.appDescription || "No description provided.";
@@ -636,6 +659,10 @@
     var chips = [];
     if (m.version) chips.push('<span class="chip">v' + esc(m.version) + '</span>');
     if (m.ipkSize) chips.push('<span class="chip">' + esc(fmtSize(m.ipkSize)) + '</span>');
+    if (p.pool === "community-plus") {
+      var prStr = (p.communityMetadata && p.communityMetadata.prNumber) ? ("PR #" + p.communityMetadata.prNumber) : "PR Queue";
+      chips.push('<span class="chip community-chip">Community+ (' + esc(prStr) + ')</span>');
+    }
     if (p._stars > 0) chips.push('<span class="chip star-chip">' + esc(fmtStars(p._stars)) + ' GitHub</span>');
     if (p._updated) chips.push('<span class="chip">Updated ' + esc(p._updated) + '</span>');
     if (m.rootRequired) chips.push('<span class="chip root-chip">Root Required</span>');
@@ -767,29 +794,83 @@
     });
   }
 
+  function loadOfficialFeed(cb) {
+    try {
+      fetch("https://repo.webosbrew.org/api/apps.json?t=" + Date.now())
+        .then(function(res) { return res.json(); })
+        .then(function(data) { cb(null, data.packages || []); })
+        .catch(function() {
+          execStore("catalog", function(err, out) {
+            try {
+              var d = JSON.parse(out);
+              cb(null, d.packages || []);
+            } catch (e) { cb(null, []); }
+          });
+        });
+    } catch (e) {
+      cb(null, []);
+    }
+  }
+
+  function loadLocalCommunity(cb) {
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "./data/community_apps.json?t=" + Date.now(), true);
+      xhr.onload = function() {
+        try {
+          var res = JSON.parse(xhr.responseText);
+          cb(null, res.packages || []);
+        } catch (e) { cb(null, []); }
+      };
+      xhr.onerror = function() { cb(null, []); };
+      xhr.send();
+    } catch (e) { cb(null, []); }
+  }
+
   function loadCatalog() {
     refreshInstalled(function() {
-      execStore("catalog", function(err, out) {
-        if (err || !out) {
-          catalogCountEl.textContent = "Failed to load catalog";
-          return;
-        }
-        try {
-          var data = JSON.parse(out);
-          var pkgs = data.packages || [];
+      loadOfficialFeed(function(_, officialPkgs) {
+        loadLocalCommunity(function(_, commPkgs) {
+          var seen = {};
+          var list = [];
+
+          // 1. Ingest official upstream packages
+          for (var i = 0; i < (officialPkgs || []).length; i++) {
+            var op = officialPkgs[i];
+            if (op && op.id && !seen[op.id]) {
+              seen[op.id] = true;
+              op.pool = op.pool || "main";
+              list.push(op);
+            }
+          }
+
+          // 2. Ingest community PR packages (if not already officially in main)
+          for (var j = 0; j < (commPkgs || []).length; j++) {
+            var cp = commPkgs[j];
+            if (cp && cp.id && !seen[cp.id]) {
+              seen[cp.id] = true;
+              cp.pool = "community-plus";
+              list.push(cp);
+            }
+          }
+
+          if (list.length === 0) {
+            catalogCountEl.textContent = "Failed to load catalog";
+            return;
+          }
+
           var meta = window.GITHUB_META || {};
-          for (var i = 0; i < pkgs.length; i++) {
-            var p = pkgs[i];
+          for (var k = 0; k < list.length; k++) {
+            var p = list[k];
             var gm = meta[p.id] || {};
             p._stars = gm.stars || 0;
             p._updated = gm.updated || "";
             p._cat = classifyApp(p);
           }
-          allPackages = pkgs;
+
+          allPackages = list;
           applyFilterAndSort();
-        } catch (e) {
-          catalogCountEl.textContent = "Catalog parse error";
-        }
+        });
       });
     });
   }
