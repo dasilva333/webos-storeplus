@@ -51,11 +51,26 @@ cmd_install() {
   fi
 
   RES=$($LUNA luna://com.webos.appInstallService/dev/install "{\"id\":\"$APP_ID\",\"ipkUrl\":\"$TMP_IPK\",\"subscribe\":false}" 2>/dev/null)
-  sleep 4
+  
+  # Wait for installation to complete: poll listApps for up to 30 seconds
+  INSTALLED=0
+  for i in $(seq 1 15); do
+    sleep 2
+    if $LUNA luna://com.webos.applicationManager/dev/listApps "{}" 2>/dev/null | grep -q "\"$APP_ID\""; then
+      INSTALLED=1
+      break
+    fi
+  done
+
   rm -f "$TMP_IPK"
 
-  send_toast "Installed $TITLE"
-  printf '{"ok":true,"id":"%s","result":%s}\n' "$APP_ID" "${RES:-null}"
+  if [ "$INSTALLED" -eq 1 ]; then
+    send_toast "Installed $TITLE"
+    printf '{"ok":true,"id":"%s","result":%s}\n' "$APP_ID" "${RES:-null}"
+  else
+    send_toast "Installation failed: $TITLE"
+    printf '{"ok":false,"id":"%s","error":"Installation timed out"}\n' "$APP_ID"
+  fi
 }
 
 cmd_remove() {
@@ -69,9 +84,24 @@ cmd_remove() {
   fi
 
   RES=$($LUNA luna://com.webos.appInstallService/dev/remove "{\"id\":\"$APP_ID\",\"subscribe\":false}" 2>/dev/null)
-  sleep 2
-  send_toast "Uninstalled $TITLE"
-  printf '{"ok":true,"id":"%s","result":%s}\n' "$APP_ID" "${RES:-null}"
+  
+  # Wait for removal to complete: poll listApps for up to 10 seconds
+  REMOVED=0
+  for i in $(seq 1 5); do
+    sleep 2
+    if ! $LUNA luna://com.webos.applicationManager/dev/listApps "{}" 2>/dev/null | grep -q "\"$APP_ID\""; then
+      REMOVED=1
+      break
+    fi
+  done
+
+  if [ "$REMOVED" -eq 1 ]; then
+    send_toast "Uninstalled $TITLE"
+    printf '{"ok":true,"id":"%s","result":%s}\n' "$APP_ID" "${RES:-null}"
+  else
+    send_toast "Uninstall failed: $TITLE"
+    printf '{"ok":false,"id":"%s","error":"Uninstall timed out"}\n' "$APP_ID"
+  fi
 }
 
 cmd_launch() {
